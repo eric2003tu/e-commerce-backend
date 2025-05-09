@@ -18,10 +18,9 @@ This backend serves as the backbone of our e-commerce platform, providing APIs f
 The backend runs on the following base URL:
 
 ```
-http://your-backend-domain.com/api
+https://e-commerce-back-xy6s.onrender.com/api
 ```
 
-> Replace `http://your-backend-domain.com` with the actual development or production server URL.
 
 ---
 
