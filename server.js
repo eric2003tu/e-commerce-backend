@@ -30,13 +30,13 @@ class App {
     this.app.use(
       '/api',
       rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 200, // limit each IP to 200 requests per windowMs
+        windowMs: 15 * 60 * 1000,
+        max: 200,
         message: 'Too many requests from this IP, please try again later'
       })
     );
 
-    // Body parsing middleware
+    // Body parsing
     this.app.use(express.json({ limit: '10kb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10kb' }));
     this.app.use(cookieParser());
@@ -44,9 +44,7 @@ class App {
     // Data sanitization
     this.app.use(mongoSanitize());
     this.app.use(xss());
-    this.app.use(hpp({
-      whitelist: ['price', 'rating'] // params you want to allow duplicates for
-    }));
+    this.app.use(hpp({ whitelist: ['price', 'rating'] }));
 
     // Compression
     this.app.use(compression());
@@ -62,42 +60,43 @@ class App {
   }
 
   initializeRoutes() {
-    // Health check endpoint
+    // Health check
     this.app.get('/api/v1/health', (req, res) => {
       res.status(200).json({
         status: 'success',
         message: 'API is healthy',
-        timestamp: new Date(),
-        environment: config.app.env,
-        version: config.app.version
+        timestamp: new Date()
       });
     });
 
     // API routes
     const apiRouter = express.Router();
     
-    // Load routes with proper error handling
-    const loadRoute = (routePath) => {
+    // Load routes with error handling
+    const loadRoute = (routePath, routeName) => {
       try {
-        return require(routePath);
+        const router = require(routePath);
+        apiRouter.use(`/${routeName}`, router);
+        console.log(`✅ ${routeName} routes loaded successfully`);
       } catch (err) {
-        console.error(`❌ Failed to load route: ${routePath}`, err);
+        console.error(`❌ Failed to load ${routeName} routes:`, err);
         process.exit(1);
       }
     };
 
-    apiRouter.use('/auth', loadRoute('./routes/auth.routes'));
-    apiRouter.use('/products', loadRoute('./routes/product.routes'));
-    apiRouter.use('/cart', loadRoute('./routes/cart.routes'));
-    apiRouter.use('/orders', loadRoute('./routes/order.routes'));
+    loadRoute('./routes/user.routes', 'users');
+    loadRoute('./routes/auth.routes', 'auth');
+    loadRoute('./routes/product.routes', 'products');
+    loadRoute('./routes/cart.routes', 'cart');
+    loadRoute('./routes/order.routes', 'orders');
 
     this.app.use('/api/v1', apiRouter);
 
     // 404 handler
-    this.app.all('*', (req, res, next) => {
+    this.app.all('*', (req, res) => {
       res.status(404).json({
         success: false,
-        message: `Can't find ${req.originalUrl} on this server`
+        message: `Route ${req.originalUrl} not found`
       });
     });
   }
@@ -108,25 +107,14 @@ class App {
       err.status = err.status || 'error';
 
       if (config.app.isProduction) {
-        console.error('⚠️ Error:', err.message);
-        
-        // Operational, trusted error: send message to client
-        if (err.isOperational) {
-          return res.status(err.statusCode).json({
-            success: false,
-            message: err.message
-          });
-        }
-        
-        // Programming or other unknown error: don't leak error details
-        return res.status(500).json({
+        console.error('Error:', err.message);
+        return res.status(err.statusCode).json({
           success: false,
-          message: 'Something went wrong!'
+          message: err.isOperational ? err.message : 'Something went wrong!'
         });
       }
 
-      // Development error handling
-      console.error('⚠️ Error:', err.stack);
+      console.error(err.stack);
       res.status(err.statusCode).json({
         success: false,
         message: err.message,
@@ -138,51 +126,24 @@ class App {
 
   initializeDatabase() {
     mongoose.connect(config.db.uri, config.db.options)
-      .then(() => console.log('✅ MongoDB connection established'))
+      .then(() => console.log('✅ MongoDB connected successfully'))
       .catch(err => {
-        console.error('❌ MongoDB connection error:', err.message);
+        console.error('❌ MongoDB connection error:', err);
         process.exit(1);
       });
 
-    mongoose.connection.on('connected', () => {
-      console.log('Mongoose connected to DB');
-    });
-
-    mongoose.connection.on('error', (err) => {
-      console.error('Mongoose connection error:', err);
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      console.log('Mongoose disconnected');
-    });
-
-    process.on('SIGINT', () => {
-      mongoose.connection.close(() => {
-        console.log('Mongoose connection closed through app termination');
-        process.exit(0);
-      });
-    });
+    mongoose.connection.on('error', err => console.error('MongoDB error:', err));
   }
 
   start() {
     this.server = this.app.listen(config.app.port, () => {
-      console.log(`🚀 Server running in ${config.app.env} mode on port ${config.app.port}`);
-      console.log(`🌍 Frontend URL: ${config.app.frontendUrl}`);
-      console.log(`📚 API Docs: ${config.app.docsUrl}`);
+      console.log(`🚀 Server running on port ${config.app.port}`);
     });
 
-    // Handle unhandled rejections
     process.on('unhandledRejection', err => {
-      console.error('UNHANDLED REJECTION! 💥 Shutting down...');
+      console.error('UNHANDLED REJECTION! Shutting down...');
       console.error(err.name, err.message);
       this.server.close(() => process.exit(1));
-    });
-
-    // Handle uncaught exceptions
-    process.on('uncaughtException', err => {
-      console.error('UNCAUGHT EXCEPTION! 💥 Shutting down...');
-      console.error(err.name, err.message);
-      process.exit(1);
     });
   }
 }
