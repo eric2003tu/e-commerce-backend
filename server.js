@@ -22,7 +22,20 @@ class App {
     this.initializeErrorHandling();
   }
 
+  
   initializeMiddlewares() {
+    this.app.use(cors({
+  origin: [
+    'https://shopeasy-igcc.onrender.com',
+    'http://localhost:5173' // For local development
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Handle preflight requests
+this.app.options('*', cors());
     // Security headers
     this.app.use(helmet());
     

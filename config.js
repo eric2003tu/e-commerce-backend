@@ -43,7 +43,10 @@ module.exports = {
   },
 
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: [
+    'https://shopeasy-igcc.onrender.com',
+    'http://localhost:5173' // For local development
+  ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type']
