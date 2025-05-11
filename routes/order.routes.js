@@ -17,7 +17,7 @@ router.get('/', protect, orderController.getUserOrders);
 // @route   GET /api/orders/admin
 // @desc    Get all orders
 // @access  Private/Admin
-router.get('/admin', protect, admin, orderController.getOrders);
+// router.get('/admin', protect, admin, orderController.getOrders);
 
 // @route   GET /api/orders/:id
 // @desc    Get order by ID
@@ -32,6 +32,6 @@ router.put('/:id/pay', protect, orderController.updateOrderToPaid);
 // @route   PUT /api/orders/:id/status
 // @desc    Update order status
 // @access  Private/Admin
-router.put('/:id/status', protect, admin, orderController.updateOrderStatus);
+// router.put('/:id/status', protect, admin, orderController.updateOrderStatus);
 
 module.exports = router;
