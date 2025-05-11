@@ -47,7 +47,7 @@ const registerUser = async (req, res) => {
     const user = await User.create({
       name,
       email,
-      password: await bcrypt.hash(password, await bcrypt.genSalt(10)),
+      password,
       phone,
       address
     });
@@ -71,27 +71,54 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide both email and password'
+      });
+    }
+
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
-    res.json({
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    const token = generateToken(user._id);
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.status(200).json({
       success: true,
-      token: generateToken(user._id),
+      token,
       user: userResponse(user)
     });
+
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during login'
+      message: 'An error occurred during login'
     });
   }
 };
+
 
 // [Include all other controller methods following the same pattern]
 

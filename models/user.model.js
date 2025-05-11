@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const validator = require('validator');
+const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema(
   {
@@ -38,26 +39,10 @@ const userSchema = new mongoose.Schema(
       default: 'user'
     },
     address: {
-      line1: {
-        type: String,
-        trim: true,
-        maxlength: [100, 'Address line 1 cannot exceed 100 characters']
-      },
-      street: {
-        type: String,
-        trim: true,
-        maxlength: [50, 'Street cannot exceed 50 characters']
-      },
-      city: {
-        type: String,
-        trim: true,
-        maxlength: [50, 'City cannot exceed 50 characters']
-      },
-      state: {
-        type: String,
-        trim: true,
-        maxlength: [50, 'State cannot exceed 50 characters']
-      },
+      line1: { type: String, trim: true, maxlength: 100 },
+      street: { type: String, trim: true, maxlength: 50 },
+      city: { type: String, trim: true, maxlength: 50 },
+      state: { type: String, trim: true, maxlength: 50 },
       zipCode: {
         type: String,
         trim: true,
@@ -68,11 +53,7 @@ const userSchema = new mongoose.Schema(
           message: 'Please provide a valid ZIP code'
         }
       },
-      country: {
-        type: String,
-        trim: true,
-        maxlength: [50, 'Country cannot exceed 50 characters']
-      }
+      country: { type: String, trim: true, maxlength: 50 }
     },
     phone: {
       type: String,
@@ -89,12 +70,8 @@ const userSchema = new mongoose.Schema(
       default: true,
       select: false
     },
-    emailVerified: {
-      type: Boolean,
-      default: false
-    },
-    verificationToken: String,
-    verificationTokenExpires: Date
+    // verificationToken: String,
+    // verificationTokenExpires: Date
   },
   {
     timestamps: true,
@@ -103,17 +80,14 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Document middleware to hash password before saving
+// Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
 
   try {
-    // Hash the password with cost of 12
     this.password = await bcrypt.hash(this.password, 12);
-    
-    // Set passwordChangedAt for new users or password updates
     if (!this.isNew) {
-      this.passwordChangedAt = Date.now() - 1000; // 1 second in past to ensure token is created after
+      this.passwordChangedAt = Date.now() - 1000;
     }
     next();
   } catch (err) {
@@ -121,62 +95,38 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Query middleware to filter out inactive users by default
+// Filter out inactive users on queries
 userSchema.pre(/^find/, function(next) {
   this.find({ active: { $ne: false } });
   next();
 });
 
-// Instance method to compare passwords
-userSchema.methods.comparePassword = async function(
-  candidatePassword,
-  userPassword
-) {
-  return await bcrypt.compare(candidatePassword, userPassword);
+// Instance methods
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Instance method to check if password was changed after token was issued
 userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
   if (this.passwordChangedAt) {
-    const changedTimestamp = parseInt(
-      this.passwordChangedAt.getTime() / 1000,
-      10
-    );
+    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
     return JWTTimestamp < changedTimestamp;
   }
-
-  // False means NOT changed
   return false;
 };
 
-// Instance method to create password reset token
 userSchema.methods.createPasswordResetToken = function() {
   const resetToken = crypto.randomBytes(32).toString('hex');
-
-  this.passwordResetToken = crypto
-    .createHash('sha256')
-    .update(resetToken)
-    .digest('hex');
-
-  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
-
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
   return resetToken;
 };
 
-// Instance method to create email verification token
-userSchema.methods.createVerificationToken = function() {
-  const verificationToken = crypto.randomBytes(32).toString('hex');
-
-  this.verificationToken = crypto
-    .createHash('sha256')
-    .update(verificationToken)
-    .digest('hex');
-
-  this.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-
-  return verificationToken;
-};
+// userSchema.methods.createVerificationToken = function() {
+//   const verificationToken = crypto.randomBytes(32).toString('hex');
+//   this.verificationToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
+//   this.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+//   return verificationToken;
+//};
 
 const User = mongoose.model('User', userSchema);
-
 module.exports = User;
