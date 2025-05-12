@@ -31,7 +31,7 @@ class App {
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type']
 }));
 
 // Handle preflight requests
@@ -62,8 +62,6 @@ this.app.options('*', cors());
     // Compression
     this.app.use(compression());
 
-    // CORS
-    this.app.use(cors(config.cors));
 
     // Logging
     this.app.use(morgan(config.app.isProduction ? 'combined' : 'dev'));
