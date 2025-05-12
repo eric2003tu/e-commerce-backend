@@ -55,7 +55,8 @@ const registerUser = async (req, res) => {
     res.status(201).json({
       success: true,
       token: generateToken(user._id),
-      user: userResponse(user)
+      user: userResponse(user),
+      message: 'User created successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -107,7 +108,8 @@ const loginUser = async (req, res) => {
     res.status(200).json({
       success: true,
       token,
-      user: userResponse(user)
+      user: userResponse(user),
+      message: "Login Successfully"
     });
 
   } catch (error) {
