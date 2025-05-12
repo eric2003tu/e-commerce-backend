@@ -73,6 +73,9 @@ this.app.options('*', cors());
   }
 
   initializeRoutes() {
+    this.app.get('/', (req, res) => {
+    res.status(200).send('Welcome to the E-commerce API');
+    });
     // Health check
     this.app.get('/api/v1/health', (req, res) => {
       res.status(200).json({
