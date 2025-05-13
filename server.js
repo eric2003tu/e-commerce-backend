@@ -26,8 +26,7 @@ class App {
   initializeMiddlewares() {
     this.app.use(cors({
   origin: [
-    'https://shopeasy-igcc.onrender.com',
-    'http://localhost:5173' // For local development
+    'https://shopeasy-igcc.onrender.com', // For local development
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
