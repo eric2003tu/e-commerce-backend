@@ -84,7 +84,7 @@ const loginUser = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Invalid credentials!! check if you use correct ones'
       });
     }
 
@@ -112,13 +112,15 @@ const loginUser = async (req, res) => {
       message: "Login Successfully"
     });
 
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'An error occurred during login'
-    });
-  }
+} catch (error) {
+  console.error('Login error:', error.message, error.stack);
+  res.status(500).json({
+    success: false,
+    message: 'An error occurred during login. this is catch error',
+    error: error.message
+  });
+}
+
 };
 
 
