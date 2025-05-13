@@ -52,7 +52,7 @@ const registerUser = async (req, res) => {
       address
     });
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       token: generateToken(user._id),
       user: userResponse(user),

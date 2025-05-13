@@ -24,29 +24,27 @@ class App {
 
   
   initializeMiddlewares() {
-    this.app.use(cors({
-  origin: [
-    'https://shopeasy-igcc.onrender.com', // For local development
-  ],
+const allowedOrigins = [
+  'https://shopeasy-igcc.onrender.com',
+  'http://localhost:5173'
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type']
-}));
+};
 
-// Handle preflight requests
-this.app.options('*', cors());
-    // Security headers
-    this.app.use(helmet());
-    
-    // Rate limiting
-    this.app.use(
-      '/api',
-      rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: 200,
-        message: 'Too many requests from this IP, please try again later'
-      })
-    );
+this.app.use(cors(corsOptions));
+this.app.options('*', cors(corsOptions)); // 👈 very important
+
 
     // Body parsing
     this.app.use(express.json({ limit: '10kb' }));
