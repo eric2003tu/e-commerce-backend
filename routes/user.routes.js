@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
-const { adminLogout } = require('../controllers/user.controller'); // Adjust path as needed
 const {
   signupUser,
   loginUser,
@@ -30,7 +28,6 @@ router.post('/admin-login', (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Validate credentials
     if (email !== ADMIN_CREDENTIALS.email || password !== ADMIN_CREDENTIALS.password) {
       return res.status(401).json({ 
         success: false,
@@ -38,7 +35,6 @@ router.post('/admin-login', (req, res) => {
       });
     }
 
-    // Create JWT token
     const token = jwt.sign(
       { 
         id: ADMIN_CREDENTIALS.id, 
@@ -48,7 +44,6 @@ router.post('/admin-login', (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
     );
 
-    // Set cookie if using cookies
     res.cookie('token', token, {
       httpOnly: true,
       expires: new Date(Date.now() + (process.env.JWT_COOKIE_EXPIRES || 7) * 24 * 60 * 60 * 1000)
@@ -68,7 +63,7 @@ router.post('/admin-login', (req, res) => {
   }
 });
 
-// ✅ Admin logout endpoint (changed to POST)
+// Admin logout endpoint
 router.post('/admin-logout', (req, res) => {
   res.clearCookie('token');
   return res.status(200).json({
@@ -77,15 +72,17 @@ router.post('/admin-logout', (req, res) => {
   });
 });
 
-
-// Original public routes
+// Public routes
 router.post('/signup', signupUser);
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/forgot-password', forgotPassword);
 router.put('/reset-password/:token', resetPassword);
 
-// Protected routes
+// Publicly accessible user listing
+router.get('/', getAllUsers);
+
+// Protected routes (require authentication)
 router.use(protect);
 router.get('/me', getUserProfile);
 router.put('/me', updateProfile);
@@ -93,7 +90,6 @@ router.put('/update-password', updatePassword);
 
 // Admin-only routes
 router.use(restrictTo('admin'));
-router.get('/', getAllUsers);
 router.route('/:id')
   .get(getUser)
   .delete(deleteUser)
