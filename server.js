@@ -26,7 +26,9 @@ class App {
   initializeMiddlewares() {
 const allowedOrigins = [
   'https://shopeasy-igcc.onrender.com',
-  'http://localhost:5173'
+  'http://localhost:5173',
+  'https://e-commerce-1c55.onrender.com',
+  'https://easyshop-gdpw.onrender.com'
 ];
 
 const corsOptions = {
