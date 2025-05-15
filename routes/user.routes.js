@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken'); // Add this import at the top
 const {
   signupUser,
   loginUser,
