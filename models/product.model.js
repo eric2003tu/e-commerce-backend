@@ -46,7 +46,7 @@ const productSchema = new mongoose.Schema(
       min: [0, 'Rating cannot be less than 0'],
       max: [5, 'Rating cannot be more than 5'],
       default: 0,
-      set: v => Math.round(v * 10) / 10 // Round to 1 decimal place
+      set: v => Math.round(v * 10) / 10
     },
     numReviews: {
       type: Number,
@@ -58,9 +58,9 @@ const productSchema = new mongoose.Schema(
       default: false
     },
     seller: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+      type: String,
+      required: [true, 'Seller name is required'],
+      maxlength: [50, 'Category cannot exceed 50 characters']
     }
   },
   {
@@ -70,7 +70,6 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-// Add text index for search functionality
 productSchema.index({ 
   name: 'text', 
   description: 'text', 
@@ -83,9 +82,7 @@ productSchema.index({
   }
 });
 
-// Add virtual for discount if needed
 productSchema.virtual('discountedPrice').get(function() {
-  // You can implement discount logic here
   return this.price;
 });
 

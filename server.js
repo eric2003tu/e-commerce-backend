@@ -22,31 +22,32 @@ class App {
     this.initializeErrorHandling();
   }
 
-  
   initializeMiddlewares() {
-const allowedOrigins = [
-  'https://shopeasy-igcc.onrender.com',
-  'http://localhost:5173',
-  'https://e-commerce-1c55.onrender.com',
-  'https://easyshop-gdpw.onrender.com'
-];
+    const allowedOrigins = [
+      'https://shopeasy-igcc.onrender.com',
+      'http://localhost:5173',
+      'https://e-commerce-1c55.onrender.com',
+      'https://easyshop-gdpw.onrender.com'
+    ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type']
-};
+    const corsOptions = {
+      origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type']
+    };
 
-this.app.use(cors(corsOptions));
-this.app.options('*', cors(corsOptions)); // 👈 very important
+    // ✅ FIXED: Use `this.app` instead of `app`
+    this.app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+    this.app.use(cors(corsOptions));
+    this.app.options('*', cors(corsOptions)); // 👈 very important
 
     // Body parsing
     this.app.use(express.json({ limit: '10kb' }));
@@ -61,7 +62,6 @@ this.app.options('*', cors(corsOptions)); // 👈 very important
     // Compression
     this.app.use(compression());
 
-
     // Logging
     this.app.use(morgan(config.app.isProduction ? 'combined' : 'dev'));
 
@@ -71,8 +71,9 @@ this.app.options('*', cors(corsOptions)); // 👈 very important
 
   initializeRoutes() {
     this.app.get('/', (req, res) => {
-    res.status(200).send('Welcome to the E-commerce API');
+      res.status(200).send('Welcome to the E-commerce API');
     });
+
     // Health check
     this.app.get('/api/v1/health', (req, res) => {
       res.status(200).json({
@@ -84,7 +85,7 @@ this.app.options('*', cors(corsOptions)); // 👈 very important
 
     // API routes
     const apiRouter = express.Router();
-    
+
     // Load routes with error handling
     const loadRoute = (routePath, routeName) => {
       try {

@@ -82,6 +82,10 @@ router.put('/reset-password/:token', resetPassword);
 
 // Publicly accessible user listing
 router.get('/', getAllUsers);
+router.route('/:id')
+  .get(getUser)
+  .delete(deleteUser)
+  .put(updateUserRole);
 
 // Protected routes (require authentication)
 router.use(protect);
@@ -91,9 +95,5 @@ router.put('/update-password', updatePassword);
 
 // Admin-only routes
 router.use(restrictTo('admin'));
-router.route('/:id')
-  .get(getUser)
-  .delete(deleteUser)
-  .put(updateUserRole);
 
 module.exports = router;
