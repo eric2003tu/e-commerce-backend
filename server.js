@@ -43,11 +43,22 @@ class App {
       allowedHeaders: ['Content-Type']
     };
 
-    // ✅ FIXED: Use `this.app` instead of `app`
+    // ✅ FIXED: Changed 'app' to 'this.app' for static files middleware
     this.app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
     this.app.use(cors(corsOptions));
-    this.app.options('*', cors(corsOptions)); // 👈 very important
+    this.app.options('*', cors(corsOptions));
+
+    // Security middleware
+    this.app.use(helmet());
+    
+    // Rate limiting
+    const limiter = rateLimit({
+      max: 100,
+      windowMs: 60 * 60 * 1000,
+      message: 'Too many requests from this IP, please try again in an hour!'
+    });
+    this.app.use('/api', limiter);
 
     // Body parsing
     this.app.use(express.json({ limit: '10kb' }));

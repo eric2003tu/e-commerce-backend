@@ -34,6 +34,12 @@ const processImages = (files) => {
   }));
 };
 
+// New helper function to get public image URL
+const getPublicImageUrl = (filePath) => {
+  if (!filePath) return null;
+  return `/uploads/products/${path.basename(filePath)}`;
+};
+
 const productController = {
   // Get all products with enhanced query building
   getProducts: async (req, res) => {
@@ -76,12 +82,18 @@ const productController = {
           .lean()
       ]);
 
+      // Transform image paths to URLs
+      const productsWithUrls = products.map(product => ({
+        ...product,
+        images: product.images.map(img => getPublicImageUrl(img))
+      }));
+
       res.json({
         success: true,
         count,
         page,
         pages: Math.ceil(count / pageSize),
-        products
+        products: productsWithUrls
       });
 
     } catch (error) {
@@ -118,10 +130,16 @@ const productController = {
         .limit(50)
         .lean();
 
+      // Transform image paths to URLs
+      const productsWithUrls = products.map(product => ({
+        ...product,
+        images: product.images.map(img => getPublicImageUrl(img))
+      }));
+
       res.json({
         success: true,
-        count: products.length,
-        products
+        count: productsWithUrls.length,
+        products: productsWithUrls
       });
 
     } catch (error) {
@@ -164,10 +182,10 @@ const productController = {
       const images = processImages(req.files);
       if (!images.length) throw new Error('At least one image is required');
 
-      // Prepare product data
+      // Prepare product data with filenames only
       const productData = {
         ...req.body,
-        images: images.map(img => img.path),
+        images: images.map(img => img.filename), // Store only filenames
         price: convertToNumber(req.body.price, 'Price'),
         stock: convertToNumber(req.body.stock, 'Stock'),
         featured: req.body.featured === 'true'
@@ -177,9 +195,15 @@ const productController = {
       const product = new Product(productData);
       const createdProduct = await product.save();
       
+      // Return product with public URLs
+      const responseProduct = {
+        ...createdProduct.toObject(),
+        images: createdProduct.images.map(img => getPublicImageUrl(img))
+      };
+      
       res.status(201).json({
         success: true,
-        product: createdProduct
+        product: responseProduct
       });
 
     } catch (error) {
@@ -211,13 +235,19 @@ const productController = {
         .sort({ createdAt: -1 })
         .lean();
 
+      // Transform image paths to URLs
+      const productsWithUrls = products.map(product => ({
+        ...product,
+        images: product.images.map(img => getPublicImageUrl(img))
+      }));
+
       // Cache control
       res.set('Cache-Control', 'public, max-age=3600'); // 1 hour cache
       
       res.json({
         success: true,
-        count: products.length,
-        products
+        count: productsWithUrls.length,
+        products: productsWithUrls
       });
 
     } catch (error) {
@@ -258,7 +288,13 @@ const productController = {
         });
       }
 
-      res.json({ success: true, product });
+      // Transform image paths to URLs
+      const productWithUrls = {
+        ...product,
+        images: product.images.map(img => getPublicImageUrl(img))
+      };
+
+      res.json({ success: true, product: productWithUrls });
 
     } catch (error) {
       console.error('Product fetch error:', {
@@ -307,13 +343,17 @@ const productController = {
       let images = product.images;
       if (req.files?.length) {
         // Delete old images
-        await Promise.all(product.images.map(imagePath => 
-          fs.promises.unlink(path.join(__dirname, '../', imagePath))
-            .catch(err => console.error('Image delete error:', err))
-        ));
+        await Promise.all(
+          product.images.map(imagePath => {
+            const filename = path.basename(imagePath);
+            const fullPath = path.join(__dirname, '../uploads/products', filename);
+            return fs.promises.unlink(fullPath)
+              .catch(err => console.error('Image delete error:', err));
+          })
+        );
         
-        // Add new images
-        images = req.files.map(file => file.path.replace(/\\/g, '/'));
+        // Add new images (store only filenames)
+        images = req.files.map(file => file.filename);
       }
 
       // Prepare update data
@@ -332,9 +372,15 @@ const productController = {
         { new: true, runValidators: true }
       );
 
+      // Return product with public URLs
+      const responseProduct = {
+        ...product.toObject(),
+        images: product.images.map(img => getPublicImageUrl(img))
+      };
+
       res.json({
         success: true,
-        product
+        product: responseProduct
       });
 
     } catch (error) {
@@ -365,20 +411,34 @@ const productController = {
         });
       }
 
-      // Delete images first
-      await Promise.all(
-        product.images.map(imagePath => 
-          fs.promises.unlink(path.join(__dirname, '../', imagePath))
-            .catch(err => console.error('Failed to delete image:', imagePath, err))
-        )
-      );
+      // Delete associated images
+      const deleteOperations = product.images.map(async (imagePath) => {
+        try {
+          const filename = path.basename(imagePath);
+          const fullPath = path.join(__dirname, '../uploads/products', filename);
+          
+          if (fs.existsSync(fullPath)) {
+            await fs.promises.unlink(fullPath);
+            console.log(`Deleted image: ${filename}`);
+          } else {
+            console.warn(`Image not found: ${filename}`);
+          }
+        } catch (err) {
+          console.error(`Error deleting image ${imagePath}:`, err);
+          // Don't throw error - continue with other deletions
+        }
+      });
 
-      // Then delete product
-      await product.remove();
+      // Wait for all image deletions to complete
+      await Promise.all(deleteOperations);
+
+      // Delete product from database
+      await Product.findByIdAndDelete(req.params.id);
 
       res.json({
         success: true,
-        message: 'Product deleted successfully'
+        message: 'Product deleted successfully',
+        deletedProductId: req.params.id
       });
 
     } catch (error) {
@@ -391,7 +451,8 @@ const productController = {
       const status = error.kind === 'ObjectId' ? 404 : 500;
       res.status(status).json({
         success: false,
-        message: status === 404 ? 'Product not found' : 'Failed to delete product'
+        message: status === 404 ? 'Product not found' : 'Failed to delete product',
+        errorDetails: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
